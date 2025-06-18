@@ -1,19 +1,30 @@
 import { getLatestNews } from '@/lib/services/news';
 import { NewsCard } from '@/components/NewsCard';
 import { getVoteForArticle } from '@/lib/services/votes';
-import { Navigation } from '@/components/Navigation';
+import { Navigation } from '@/components/layouts/Navigation';
 import { TrendingUp, Shield, Users, Target } from 'lucide-react';
+import { HomeFooter } from '@/components/layouts/Footer';
+import { auth } from '@clerk/nextjs/server';
 
 export default async function Home() {
+  const { userId } = await auth();
   const articles = await getLatestNews();
-  const votes = await Promise.all(
-    articles.map(article => getVoteForArticle(article.id))
-  );
 
-  const articlesWithVotes = articles.map((article, index) => ({
+  let articlesWithVotes = articles.map(article => ({
     ...article,
-    userVote: votes[index],
+    userVote: null,
   }));
+
+  if (userId) {
+    const votes = await Promise.all(
+      articles.map(article => getVoteForArticle(article.id))
+    );
+
+    articlesWithVotes = articles.map((article, index) => ({
+      ...article,
+      userVote: votes[index],
+    }));
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,12 +48,18 @@ export default async function Home() {
               <span className="font-semibold text-yellow-200"> 균형 잡힌 정보 소비</span>를 도와드립니다
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-4 px-8 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+              <a
+                href="/news-explore"
+                className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-4 px-8 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg inline-flex items-center justify-center"
+              >
                 뉴스 둘러보기
-              </button>
-              <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white font-bold py-4 px-8 rounded-lg transition-all duration-300 transform hover:scale-105">
+              </a>
+              <a
+                href="/bias-analysis"
+                className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white font-bold py-4 px-8 rounded-lg transition-all duration-300 transform hover:scale-105 inline-flex items-center justify-center"
+              >
                 내 성향 분석하기
-              </button>
+              </a>
             </div>
           </div>
         </div>
@@ -106,21 +123,7 @@ export default async function Home() {
       </main>
 
       {/* 푸터 */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <h3 className="text-2xl font-bold mb-4">SIZZ</h3>
-            <p className="text-gray-400 mb-6">신뢰 기반 뉴스 추천 서비스</p>
-            <div className="flex justify-center space-x-6 text-sm text-gray-400">
-              <span>© 2024 SIZZ. All rights reserved.</span>
-              <span>•</span>
-              <span>개인정보처리방침</span>
-              <span>•</span>
-              <span>이용약관</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <HomeFooter />
     </div>
   );
 }

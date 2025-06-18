@@ -16,6 +16,12 @@ export function Navigation() {
                             <Link href="/" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
                                 홈
                             </Link>
+                            <Link href="/news-explore" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+                                뉴스 둘러보기
+                            </Link>
+                            <Link href="/bias-analysis" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+                                성향 분석
+                            </Link>
                             <Link href="/my-bias" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
                                 내 성향
                             </Link>

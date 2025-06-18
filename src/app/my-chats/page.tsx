@@ -1,99 +1,114 @@
-import { auth } from '@clerk/nextjs/server';
-import { Navigation } from '@/components/Navigation';
-import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import Link from 'next/link';
+'use client';
 
-async function getChatHistories() {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/chat-history`, {
-        cache: 'no-store',
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.histories || [];
+import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { Navigation } from '@/components/layouts/Navigation';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { HeroSection } from '@/components/ui/HeroSection';
+import { ChatHistoryCard } from '@/components/ui/ChatHistoryCard';
+import { MessageCircle, Users } from 'lucide-react';
+
+interface ChatHistory {
+    id: string;
+    article_id: string;
+    updated_at: string;
+    messages: Array<{ content: string }>;
+    articles?: {
+        title?: string;
+        source?: string;
+        bias?: string;
+    };
 }
 
-export default async function MyChatsPage() {
-    const { userId } = await auth();
-    if (!userId) {
+export default function MyChatsPage() {
+    const { user, isLoaded } = useUser();
+    const [histories, setHistories] = useState<ChatHistory[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isLoaded || !user) return;
+        async function fetchHistories() {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await fetch('/api/chat-history');
+                if (!res.ok) throw new Error('대화 기록을 불러오지 못했습니다.');
+                const data = await res.json();
+                setHistories(data.histories || []);
+            } catch (e: any) {
+                setError(e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchHistories();
+    }, [isLoaded, user]);
+
+    const handleDelete = async (articleId: string) => {
+        if (!confirm('정말로 이 대화를 삭제하시겠습니까?')) return;
+        try {
+            await fetch(`/api/chat-history?articleId=${articleId}`, { method: 'DELETE' });
+            setHistories((prev) => prev.filter((h) => h.article_id !== articleId));
+        } catch {
+            alert('삭제에 실패했습니다.');
+        }
+    };
+
+    if (!isLoaded || loading) {
         return (
             <div className="min-h-screen bg-gray-50">
                 <Navigation />
-                <div className="max-w-2xl mx-auto py-20 text-center">
-                    <h2 className="text-2xl font-bold mb-4">로그인이 필요합니다.</h2>
-                </div>
+                <LoadingSpinner message="대화 기록을 불러오고 있습니다..." />
             </div>
         );
     }
 
-    const histories = await getChatHistories();
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-gray-50">
+                <Navigation />
+                <EmptyState
+                    icon={<Users />}
+                    title="로그인이 필요합니다."
+                    description="대화 기록을 보려면 로그인해주세요."
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
             <Navigation />
+            <HeroSection
+                title="나의 대화 히스토리"
+                subtitle="AI와 나눈 뉴스 관련 대화 기록을 한눈에 확인하세요."
+                icon={<MessageCircle className="w-12 h-12 text-white" />}
+                gradient="from-blue-600 via-indigo-600 to-purple-700"
+            />
             <main className="max-w-3xl mx-auto px-4 py-12">
-                <h1 className="text-3xl font-bold mb-8 text-center">나의 대화 히스토리</h1>
-
+                {error && (
+                    <div className="text-center text-red-500 mb-6">{error}</div>
+                )}
                 {histories.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8">
-                        아직 저장된 대화가 없습니다.
-                    </div>
+                    <EmptyState
+                        icon={<MessageCircle className="w-16 h-16 mx-auto" />}
+                        title="아직 저장된 대화가 없습니다."
+                        description="뉴스 기사에서 AI와 대화를 시작해보세요!"
+                    />
                 ) : (
                     <div className="space-y-4">
-                        {histories.map((history: {
-                            id: string;
-                            article_id: string;
-                            updated_at: string;
-                            messages: Array<{ content: string }>;
-                            articles?: {
-                                title?: string;
-                                source?: string;
-                                bias?: string
-                            }
-                        }) => (
-                            <div key={history.id} className="bg-white rounded-lg shadow p-4">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <h3 className="font-semibold text-lg">
-                                            {history.articles?.title || '제목 없음'}
-                                        </h3>
-                                        <p className="text-sm text-gray-500">
-                                            {history.articles?.source} ·
-                                            {history.articles?.bias === 'left' ? '진보' :
-                                                history.articles?.bias === 'right' ? '보수' : '중립'}
-                                        </p>
-                                    </div>
-                                    <div className="text-sm text-gray-500">
-                                        {format(new Date(history.updated_at), 'yyyy년 MM월 dd일 HH:mm', { locale: ko })}
-                                    </div>
-                                </div>
-
-                                <div className="mt-2 text-sm text-gray-600">
-                                    마지막 대화: {history.messages[history.messages.length - 1]?.content.slice(0, 100)}...
-                                </div>
-
-                                <div className="mt-4 flex justify-end space-x-2">
-                                    <Link
-                                        href={`/article/${history.article_id}`}
-                                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
-                                    >
-                                        기사 보기
-                                    </Link>
-                                    <button
-                                        onClick={async () => {
-                                            if (confirm('정말로 이 대화를 삭제하시겠습니까?')) {
-                                                await fetch(`/api/chat-history?articleId=${history.article_id}`, {
-                                                    method: 'DELETE',
-                                                });
-                                                window.location.reload();
-                                            }
-                                        }}
-                                        className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
-                                    >
-                                        삭제
-                                    </button>
-                                </div>
-                            </div>
+                        {histories.map((history) => (
+                            <ChatHistoryCard
+                                key={history.id}
+                                id={history.id}
+                                articleId={history.article_id}
+                                updatedAt={history.updated_at}
+                                messages={history.messages}
+                                article={history.articles}
+                                onDelete={handleDelete}
+                            />
                         ))}
                     </div>
                 )}

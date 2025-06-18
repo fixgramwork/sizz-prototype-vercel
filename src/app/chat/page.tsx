@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { Navigation } from '@/components/Navigation';
+import { Navigation } from '@/components/layouts/Navigation';
 
 interface Message {
     role: 'user' | 'assistant';

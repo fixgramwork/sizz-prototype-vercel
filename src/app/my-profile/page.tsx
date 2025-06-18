@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { Navigation } from '@/components/Navigation';
+import { Navigation } from '@/components/layouts/Navigation';
 import { ProfileForm } from '@/components/ProfileForm';
 
 interface UserData {

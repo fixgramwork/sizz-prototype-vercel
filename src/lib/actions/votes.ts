@@ -13,11 +13,27 @@ export async function saveVote(articleId: string, voteType: boolean) {
 
     const supabase = createSupabaseClient();
 
+    // Clerk ID로 실제 사용자 ID 찾기
+    const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_id', userId)
+        .single();
+
+    if (userError) {
+        console.error('Error fetching user:', userError);
+        throw new Error('사용자 정보를 찾을 수 없습니다.');
+    }
+
+    if (!user) {
+        throw new Error('사용자가 존재하지 않습니다.');
+    }
+
     // 기존 투표 확인
     const { data: existingVote, error: fetchError } = await supabase
         .from('votes')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', user.id)
         .eq('article_id', articleId)
         .single();
 
@@ -42,7 +58,7 @@ export async function saveVote(articleId: string, voteType: boolean) {
         const { error: insertError } = await supabase
             .from('votes')
             .insert({
-                user_id: userId,
+                user_id: user.id,
                 article_id: articleId,
                 vote_type: voteType,
             });
